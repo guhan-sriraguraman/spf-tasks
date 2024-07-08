@@ -8,7 +8,10 @@ import {
   MDBCol,
   MDBContainer,
   MDBBtn,
-  MDBBtnGroup
+  MDBBtnGroup,
+  MDBPagination,
+  MDBPaginationLink,
+  MDBPaginationItem
 } from 'mdb-react-ui-kit'
 import './App.css';
 
@@ -16,30 +19,56 @@ function App() {
   const [data,setData]=useState([]);
   const [value,setvalue]=useState("");
   const [useSort,setuseSort]=useState("");
+  const[currentPage,setCurrentPage]=useState(0);
+  const[pageLimit]=useState(5);
   const sortOptions=["Name","Id","Title","Status"]
-
+  const[operation,setOperation]=useState("");
+  const[sortFilterValue,setSortFilterValue]=useState("")
   useEffect(()=>{
-    loadUsersData();
+    loadUsersData(0,5,0);
   },[]);
-  const loadUsersData=async()=>{
-      return await axios.get("http://localhost:5000/users")
-      .then((response)=>setData(response.data))
+  const loadUsersData=async(start,end,increase,optType=null,filterOrSortValue)=>{
+    switch(optType){
+      case "search":
+        setOperation(optType);
+        setuseSort("");
+        
+        return  await axios.get(`http://localhost:5000/users?q=${value}&_start=${start}&_end=${end}`)
+        .then((response)=>{
+          setData(response.data);
+          setCurrentPage(currentPage+increase)
+    
+        })
+        .catch((err)=>console.log(err))
+      default:
+        return await axios.get(`http://localhost:5000/users?_start=${start}&_end=${end}`)
+      .then((response)=>{
+        setData(response.data);
+        setCurrentPage(currentPage+increase);
+      })
       .catch((err)=>console.log(err));
+    }  
+    
   }
   // console.log("data",data)
   
   const handleReset=()=>{
-    loadUsersData();
+    setOperation("");
+    setvalue("");
+    loadUsersData(0,5,0);
   };
   const handleSearch=async (e)=>{
+    
     // console.log("Seacrh Name "+e);
-        e.preventDefault();
-        return  await axios.get(`http://localhost:5000/users?q=${value}`)
-        .then((response)=>{
-          setData(response.data);
-          setvalue('');
-        })
-        .catch((err)=>console.log(err))
+    e.preventDefault();
+    
+        loadUsersData(0,5,0,'search');
+        // return  await axios.get(`http://localhost:5000/users?q=${value}`)
+        // .then((response)=>{
+        //   setData(response.data);
+        //   setvalue('');
+        // })
+        // .catch((err)=>console.log(err))
   }
   const handleSort= async (e)=>{
     // console.log("select Value "+e.target.value)
@@ -62,6 +91,52 @@ const handleFilter=async (e)=>{
   .catch((err)=>console.log(err))
 
 }
+ const renderPagination=()=>{
+  if(data.length<4 && currentPage===0) return null
+  if(currentPage===0){
+    return (
+      <MDBPagination className='mb-0'>
+        <MDBPaginationItem>
+          <MDBPaginationLink>1</MDBPaginationLink>
+        </MDBPaginationItem>
+        <MDBPaginationItem>
+          <MDBBtn onClick={()=>loadUsersData(5,10,1,operation)}>Next</MDBBtn>
+        </MDBPaginationItem>
+      </MDBPagination>
+    )
+  }
+  else if(currentPage<pageLimit-1 && data.length===pageLimit){
+    return (
+      <MDBPagination className='mb-0'>
+      <MDBPaginationItem>
+        <MDBBtn onClick={()=>loadUsersData((currentPage-1)*5,(currentPage*5),-1,operation)}>Previous</MDBBtn>
+      </MDBPaginationItem>
+      <MDBPaginationItem>
+        <MDBPaginationLink>{currentPage+1}</MDBPaginationLink>
+      </MDBPaginationItem>
+      <MDBPaginationItem>
+        <MDBBtn onClick={()=>loadUsersData((currentPage+1)*5,(currentPage+2)*5,1,operation)}>Next</MDBBtn>
+      </MDBPaginationItem>
+    </MDBPagination>
+    )
+  }
+  else{
+    return (
+      <MDBPagination className='mb-0'>
+      <MDBPaginationItem>
+        <MDBBtn onClick=
+        {()=>
+        loadUsersData((currentPage-1)*5,currentPage*5,-1,operation)}>Previous</MDBBtn>
+      </MDBPaginationItem>
+      <MDBPaginationItem>
+        <MDBPaginationLink>{currentPage+1}</MDBPaginationLink>
+      </MDBPaginationItem>
+      
+
+    </MDBPagination>
+    )
+  }
+ }
   return (
     <MDBContainer>
     <form style={{
@@ -152,6 +227,15 @@ const handleFilter=async (e)=>{
                   </MDBTable>
               </MDBCol>
             </MDBRow>
+            <div style={{
+      margin:"auto",
+      padding:"15px",
+      maxWidth:"250px",
+      alignContent:"center"
+    }}>
+
+              {renderPagination()}
+            </div>
         </div>
        
     </MDBContainer>
